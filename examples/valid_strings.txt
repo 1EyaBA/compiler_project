@@ -1,0 +1,6 @@
+string firstName;
+string lastName;
+string fullName;
+firstName = "Alice";
+lastName = "Smith";
+fullName = firstName + lastName;

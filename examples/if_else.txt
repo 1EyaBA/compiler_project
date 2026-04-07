@@ -1,0 +1,9 @@
+int a;
+int b;
+a = 10;
+b = 5;
+if a > b then {
+    a = a - 1;
+} else {
+    b = b + 1;
+}
