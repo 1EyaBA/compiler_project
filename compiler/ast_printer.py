@@ -5,12 +5,13 @@ Converts an AST into a readable indented string for display.
 
 from .ast_nodes import (
     ProgramNode, DeclNode, AssignNode, BinOpNode,
-    NumberNode, StringNode, IdentifierNode, IfNode, ConditionNode
+    NumberNode, StringNode, IdentifierNode,
+    IfNode, WhileNode, ConditionNode
 )
 
 
 def ast_to_lines(node, indent=0) -> list:
-    pad = "  " * indent
+    pad   = "  " * indent
     lines = []
 
     if isinstance(node, ProgramNode):
@@ -50,6 +51,14 @@ def ast_to_lines(node, indent=0) -> list:
             lines.append(f"{pad}  else:")
             for stmt in node.else_body:
                 lines.extend(ast_to_lines(stmt, indent + 2))
+
+    elif isinstance(node, WhileNode):
+        lines.append(f"{pad}While")
+        lines.append(f"{pad}  condition:")
+        lines.extend(ast_to_lines(node.condition, indent + 2))
+        lines.append(f"{pad}  body:")
+        for stmt in node.body:
+            lines.extend(ast_to_lines(stmt, indent + 2))
 
     elif isinstance(node, ConditionNode):
         lines.append(f"{pad}Condition  '{node.op}'")

@@ -1,0 +1,13 @@
+int x;
+int y;
+x = 10;
+y = 10;
+if x >= y then {
+    x = x - 1;
+}
+if x != y then {
+    y = y + 1;
+}
+if x == 9 then {
+    x = 0;
+}

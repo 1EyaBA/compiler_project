@@ -1,0 +1,8 @@
+int x;
+int sum;
+x = 5;
+sum = 0;
+while x > 0 do {
+    sum = sum + x;
+    x = x - 1;
+}

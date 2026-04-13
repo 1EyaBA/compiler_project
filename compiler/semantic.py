@@ -6,11 +6,14 @@ Walks the AST and checks for:
   - Type mismatches in assignments
   - Type mismatches in binary operations
   - Type mismatches in conditions
+  - Scope isolation: variables declared inside blocks are not
+    visible outside them
 """
 
 from .ast_nodes import (
     ProgramNode, DeclNode, AssignNode, BinOpNode,
-    NumberNode, StringNode, IdentifierNode, IfNode, ConditionNode
+    NumberNode, StringNode, IdentifierNode,
+    IfNode, WhileNode, ConditionNode
 )
 from .symbol_table import SymbolTable
 
@@ -40,6 +43,8 @@ class SemanticAnalyzer:
             self.visit_assign(node)
         elif isinstance(node, IfNode):
             self.visit_if(node)
+        elif isinstance(node, WhileNode):
+            self.visit_while(node)
         else:
             self.errors.append(f"Unknown statement type: {type(node).__name__}")
 
@@ -50,17 +55,15 @@ class SemanticAnalyzer:
             self.errors.append(str(e))
 
     def visit_assign(self, node: AssignNode):
-        # Variable must be declared
         try:
             declared_type = self.symbol_table.lookup(node.name, line=node.line)
         except Exception as e:
             self.errors.append(str(e))
             return
 
-        # Infer type of the expression
         expr_type = self.infer_type(node.expr)
         if expr_type is None:
-            return  # error already recorded during inference
+            return
 
         if declared_type != expr_type:
             self.errors.append(
@@ -70,16 +73,28 @@ class SemanticAnalyzer:
 
     def visit_if(self, node: IfNode):
         self.visit_condition(node.condition)
+
+        # then-block gets its own scope
         self.symbol_table.push_scope()
         for stmt in node.then_body:
             self.visit_stmt(stmt)
         self.symbol_table.pop_scope()
 
+        # else-block gets its own scope
         if node.else_body:
             self.symbol_table.push_scope()
             for stmt in node.else_body:
                 self.visit_stmt(stmt)
             self.symbol_table.pop_scope()
+
+    def visit_while(self, node: WhileNode):
+        self.visit_condition(node.condition)
+
+        # while-body gets its own scope
+        self.symbol_table.push_scope()
+        for stmt in node.body:
+            self.visit_stmt(stmt)
+        self.symbol_table.pop_scope()
 
     def visit_condition(self, node: ConditionNode):
         left_type  = self.infer_type(node.left)
@@ -90,7 +105,7 @@ class SemanticAnalyzer:
                 f"cannot compare '{left_type}' with '{right_type}'."
             )
 
-    # ─── Type Inference ──────────────────────────────────────────────────────
+    # ─── Type Inference ───────────────────────────────────────────────────────
     def infer_type(self, node) -> str:
         if isinstance(node, NumberNode):
             return 'int'
@@ -110,7 +125,7 @@ class SemanticAnalyzer:
             right_type = self.infer_type(node.right)
 
             if left_type is None or right_type is None:
-                return None   # error already logged
+                return None
 
             if left_type != right_type:
                 self.errors.append(
@@ -119,7 +134,7 @@ class SemanticAnalyzer:
                 )
                 return None
 
-            # Only + is valid for strings; -, *, / are int-only
+            # Only + is valid for strings; -, *, / require int
             if left_type == 'string' and node.op != '+':
                 self.errors.append(
                     f"Line {node.line}: Operator '{node.op}' is not valid for type 'string'. "

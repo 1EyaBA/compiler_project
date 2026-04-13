@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from compiler.lexer       import tokenize
+from compiler.lexer       import tokenize, spec_format
 from compiler.parser      import parse, ParseError
 from compiler.semantic    import analyze
 from compiler.ast_printer import pretty_print
@@ -43,6 +43,7 @@ ICONS = {
     "valid-icon": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2e8f6e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
     "invalid-icon":'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     "cpu-big":    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
+    "loop":       '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
 }
 
 
@@ -73,7 +74,6 @@ st.markdown("""
   }
   .stTextArea label { font-weight: 600 !important; font-size: 0.85rem !important; color: #1c1917 !important; }
 
-  /* Header */
   .compiler-header { text-align:center; padding:2.8rem 0 1.2rem 0; }
   .compiler-header .icon-wrap {
     display:inline-flex; align-items:center; justify-content:center;
@@ -92,7 +92,6 @@ st.markdown("""
     text-transform:uppercase; font-weight:500;
   }
 
-  /* Pipeline */
   .pipeline {
     display:flex; align-items:center; justify-content:center;
     gap:0.4rem; margin:1.2rem 0 0.5rem 0; flex-wrap:wrap;
@@ -110,7 +109,6 @@ st.markdown("""
   .pipe-step.active-result   { background:#f0fdf4; border-color:#16a34a; color:#16a34a; }
   .pipe-arrow { color:#c9bdb3; display:inline-flex; align-items:center; }
 
-  /* Phase cards */
   .phase-card {
     background:#fff; border:1.5px solid #e8e0d4; border-radius:14px;
     padding:1.4rem 1.6rem; margin-bottom:1rem;
@@ -126,7 +124,6 @@ st.markdown("""
   .phase-parser   { color:#7c5cbf; }
   .phase-semantic { color:#2e8f6e; }
 
-  /* Token chips */
   .token-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .token-chip {
     display:inline-flex; align-items:center; gap:4px;
@@ -141,7 +138,13 @@ st.markdown("""
   .chip-OPERATOR   { background:#fef2f2; color:#c0392b; border-color:#f5a8a8; }
   .chip-DELIMITER  { background:#f8f8f8; color:#6b6b6b; border-color:#cccccc; }
 
-  /* AST box */
+  .spec-box {
+    font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+    background:#f5f0ff; color:#3b1f7a; border:1.5px solid #c4a8ef;
+    border-radius:10px; padding:0.9rem 1.2rem; word-break:break-all;
+    margin-top:0.8rem; line-height:1.7;
+  }
+
   .ast-box {
     font-family:'JetBrains Mono',monospace; font-size:0.78rem;
     background:#fafaf8; color:#2d4a6e; border:1.5px solid #dde8f5;
@@ -149,7 +152,6 @@ st.markdown("""
     overflow-x:auto; max-height:380px; overflow-y:auto; line-height:1.8;
   }
 
-  /* Badges */
   .badge-ok {
     display:inline-flex; align-items:center; gap:5px;
     background:#f0fdf4; color:#166534; border:1.5px solid #86efac;
@@ -161,7 +163,6 @@ st.markdown("""
     border-radius:20px; padding:4px 12px; font-size:0.78rem; font-weight:600;
   }
 
-  /* Error items */
   .error-item {
     display:flex; align-items:flex-start; gap:8px;
     background:#fff8f8; border-left:3px solid #e05252;
@@ -171,7 +172,6 @@ st.markdown("""
   }
   .error-item svg { flex-shrink:0; margin-top:2px; }
 
-  /* Symbol table */
   .sym-row {
     display:flex; justify-content:space-between; align-items:center;
     padding:7px 14px; border-radius:8px; margin:4px 0;
@@ -181,8 +181,8 @@ st.markdown("""
   .sym-string { background:#fdf4ff; color:#7e22ce; border-color:#e9d5ff; }
   .sym-name   { font-weight:700; }
   .sym-type   { font-size:0.68rem; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; opacity:0.65; }
+  .sym-scope  { font-size:0.65rem; opacity:0.5; margin-left:0.5rem; }
 
-  /* Buttons */
   div.stButton > button {
     width:100%; background:#1c1917; color:#f7f4ef; border:none;
     border-radius:10px; font-family:'DM Sans',sans-serif; font-weight:600;
@@ -194,7 +194,6 @@ st.markdown("""
   hr { border:none; border-top:1px solid #e8e0d4 !important; margin:1.5rem 0 !important; }
   details { background:#fafaf8; border:1px solid #e8e0d4; border-radius:8px; padding:0 0.5rem; }
 
-  /* Sidebar labels */
   .sidebar-section {
     display:flex; align-items:center; gap:7px;
     font-size:0.7rem; font-weight:700; letter-spacing:2px;
@@ -205,14 +204,12 @@ st.markdown("""
     font-size:0.7rem; font-weight:700; margin:0.6rem 0 0.3rem 0;
   }
 
-  /* Example hint */
   .example-hint {
     display:flex; align-items:center; gap:6px;
     font-size:0.78rem; color:#9c8f82; margin-bottom:0.4rem;
   }
   .example-hint strong { color:#c2763a; }
 
-  /* Empty state */
   .empty-state { text-align:center; padding:4rem 0 3rem 0; }
   .empty-state .icon-wrap {
     display:inline-flex; align-items:center; justify-content:center;
@@ -223,7 +220,6 @@ st.markdown("""
   .empty-state p { color:#9c8f82; font-size:0.95rem; line-height:1.6; }
   .empty-state strong { color:#c2763a; }
 
-  /* Result banners */
   .result-ok  { display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px; padding:14px 18px; color:#166534; font-weight:600; }
   .result-err { display:flex; align-items:center; gap:8px; background:#fff1f2; border:1.5px solid #fda4af; border-radius:12px; padding:14px 18px; color:#9f1239; font-weight:600; }
   .result-warn{ display:flex; align-items:center; gap:8px; background:#fffbeb; border:1.5px solid #fde68a; border-radius:12px; padding:14px 18px; color:#92400e; font-weight:600; }
@@ -240,6 +236,16 @@ EXAMPLES = {
         "desc": "Variables entières, opérations, condition simple",
         "code": "int x;\nint y;\nx = 5 + 2;\ny = x * 3;\nif x > 4 then {\n    x = x - 1;\n}"
     },
+    "While loop": {
+        "valid": True,
+        "desc": "Boucle while avec compteur (nouvelle fonctionnalité)",
+        "code": "int x;\nint sum;\nx = 5;\nsum = 0;\nwhile x > 0 do {\n    sum = sum + x;\n    x = x - 1;\n}"
+    },
+    "Opérateurs étendus": {
+        "valid": True,
+        "desc": ">=, <=, ==, != dans les conditions",
+        "code": "int x;\nint y;\nx = 10;\ny = 10;\nif x >= y then {\n    x = x - 1;\n}\nif x != y then {\n    y = y + 1;\n}\nif x == 9 then {\n    x = 0;\n}"
+    },
     "Strings": {
         "valid": True,
         "desc": "Déclaration et concaténation de chaînes",
@@ -255,15 +261,10 @@ EXAMPLES = {
         "desc": "Expressions avec parenthèses et priorité",
         "code": "int result;\nint temp;\nresult = (3 + 4) * 2;\ntemp = result - 1;\nif temp > 10 then {\n    result = result + temp;\n} else {\n    result = temp * 2;\n}"
     },
-    "Multi-variables": {
+    "While + If imbriqué": {
         "valid": True,
-        "desc": "Plusieurs variables int et string",
-        "code": 'int score;\nint bonus;\nint total;\nstring player;\nstring status;\nplayer = "Ahmed";\nscore = 80;\nbonus = 20;\ntotal = score + bonus;\nstatus = "Excellent";\nif total > 90 then {\n    bonus = bonus + 10;\n} else {\n    status = "Good";\n}'
-    },
-    "Calcul imbrique": {
-        "valid": True,
-        "desc": "Chaîne d'affectations dépendantes",
-        "code": "int a;\nint b;\nint c;\nint d;\na = 2;\nb = a + 3;\nc = b * 2;\nd = c - a;\nif d > 5 then {\n    d = d + 1;\n}"
+        "desc": "Boucle while avec if à l'intérieur",
+        "code": "int x;\nint y;\nx = 10;\ny = 0;\nwhile x > 0 do {\n    x = x - 1;\n    if x > 5 then {\n        y = y + 1;\n    }\n}"
     },
     "Type Mismatch": {
         "valid": False,
@@ -274,6 +275,11 @@ EXAMPLES = {
         "valid": False,
         "desc": "Utilisation avant déclaration",
         "code": "int x;\nx = y + 1;"
+    },
+    "Scope isolation": {
+        "valid": False,
+        "desc": "Variable de bloc non visible à l'extérieur",
+        "code": "int x;\nx = 1;\nif x > 0 then {\n    int inner;\n    inner = 42;\n}\ninner = 0;"
     },
     "Types mixtes dans expr": {
         "valid": False,
@@ -294,6 +300,11 @@ EXAMPLES = {
         "valid": False,
         "desc": "Point-virgule manquant",
         "code": "int x\nx = 5;"
+    },
+    "While sans do": {
+        "valid": False,
+        "desc": "Mot-clé 'do' manquant dans while",
+        "code": "int x;\nx = 3;\nwhile x > 0 {\n    x = x - 1;\n}"
     },
 }
 
@@ -340,19 +351,22 @@ with st.sidebar:
     )
     st.markdown("""
 ```
-<program>   ::= <stmt>*
-<stmt>      ::= <decl>
-              | <assign>
-              | <if>
-<decl>      ::= (int|string) ID ;
-<assign>    ::= ID = <expr> ;
-<if>        ::= if <cond> then { <stmt>* }
-                (else { <stmt>* })?
-<cond>      ::= <expr> (>|<|=) <expr>
-<expr>      ::= <term> ((+|-) <term>)*
-<term>      ::= <factor> ((*|/) <factor>)*
-<factor>    ::= NUMBER | STRING | ID
-              | ( <expr> )
+<program>  ::= <stmt>*
+<stmt>     ::= <decl>
+             | <assign>
+             | <if>
+             | <while>
+<decl>     ::= (int|string) ID ;
+<assign>   ::= ID = <expr> ;
+<if>       ::= if <cond> then { <stmt>* }
+               (else { <stmt>* })?
+<while>    ::= while <cond> do { <stmt>* }
+<cond>     ::= <expr> <cmp_op> <expr>
+<cmp_op>   ::= > | < | = | == | >= | <= | !=
+<expr>     ::= <term> ((+|-) <term>)*
+<term>     ::= <factor> ((*|/) <factor>)*
+<factor>   ::= NUMBER | STRING | ID
+             | ( <expr> )
 ```
 """)
     st.markdown("---")
@@ -400,7 +414,7 @@ code = st.text_area(
     "Code source",
     value=st.session_state["code"],
     height=180,
-    help="Ecrivez votre programme ici. Selectionnez un exemple dans la barre laterale ou tapez le votre."
+    help="Écrivez votre programme ici. Sélectionnez un exemple dans la barre latérale ou tapez le vôtre."
 )
 st.session_state["code"] = code
 
@@ -429,6 +443,7 @@ if run_all and code.strip():
         st.markdown(f'<span class="badge-ok">{ICONS["check"]} {len(tokens)} tokens trouvés</span>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
+        # Token chips
         chip_html = '<div class="token-grid">'
         label_map = {'KEYWORD':'KW','IDENTIFIER':'ID','NUMBER':'NUM','STRING_LIT':'STR','OPERATOR':'OP','DELIMITER':'DL'}
         for tok in tokens:
@@ -436,6 +451,11 @@ if run_all and code.strip():
             chip_html += f'<span class="token-chip chip-{tok.type}" title="Ligne {tok.line}">{label}: {tok.value}</span>'
         chip_html += '</div>'
         st.markdown(chip_html, unsafe_allow_html=True)
+
+        # Spec-format token stream (as per project spec examples)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("**Format spec du projet :**", unsafe_allow_html=False)
+        st.markdown(f'<div class="spec-box">{spec_format(tokens)}</div>', unsafe_allow_html=True)
 
         with st.expander("Table complète des tokens"):
             c1, c2, c3 = st.columns([2, 3, 1])
@@ -459,20 +479,20 @@ if run_all and code.strip():
     )
     if lexer_ok:
         try:
-            ast = parse(tokens)
+            ast_tree = parse(tokens)
             st.markdown(f'<span class="badge-ok">{ICONS["check"]} AST construit avec succès</span>', unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f'<div class="ast-box">{pretty_print(ast)}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ast-box">{pretty_print(ast_tree)}</div>', unsafe_allow_html=True)
             parser_ok = True
         except ParseError as e:
             st.markdown(f'<span class="badge-err">{ICONS["x"]} Erreur Syntaxique</span>', unsafe_allow_html=True)
             st.markdown(f'<div class="error-item">{ICONS["alert"]} {e}</div>', unsafe_allow_html=True)
             parser_ok = False
-            ast       = None
+            ast_tree  = None
     else:
         st.markdown(f'<div class="skipped">{ICONS["skip"]} Ignoré — corrigez les erreurs lexicales d\'abord.</div>', unsafe_allow_html=True)
         parser_ok = False
-        ast       = None
+        ast_tree  = None
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── PHASE 3: SEMANTIC ─────────────────────────────────────────────────────
@@ -480,8 +500,8 @@ if run_all and code.strip():
         f'<div class="phase-card"><div class="phase-title phase-semantic">{ICONS["shield"]} Phase 3 — Analyse Sémantique</div>',
         unsafe_allow_html=True
     )
-    if parser_ok and ast:
-        errors, sym_table = analyze(ast)
+    if parser_ok and ast_tree:
+        errors, sym_table = analyze(ast_tree)
         if not errors:
             st.markdown(f'<span class="badge-ok">{ICONS["check"]} Aucune erreur sémantique</span>', unsafe_allow_html=True)
         else:
@@ -490,29 +510,39 @@ if run_all and code.strip():
             for err in errors:
                 st.markdown(f'<div class="error-item">{ICONS["alert"]} {err}</div>', unsafe_allow_html=True)
 
+        # Symbol table with scope levels
         st.markdown(f'<div class="sym-header">{ICONS["table"]} Table des symboles</div>', unsafe_allow_html=True)
         variables = sym_table.all_variables()
         if variables:
-            for var_name, var_type in variables.items():
-                cls = "sym-int" if var_type == "int" else "sym-string"
+            for var_name, info in variables.items():
+                var_type  = info['type']
+                var_level = info['level']
+                cls       = "sym-int" if var_type == "int" else "sym-string"
+                scope_label = "global" if var_level == 0 else f"scope {var_level}"
                 st.markdown(
-                    f'<div class="sym-row {cls}"><span class="sym-name">{var_name}</span><span class="sym-type">{var_type}</span></div>',
+                    f'<div class="sym-row {cls}">'
+                    f'<span class="sym-name">{var_name}</span>'
+                    f'<span>'
+                    f'<span class="sym-type">{var_type}</span>'
+                    f'<span class="sym-scope">({scope_label})</span>'
+                    f'</span>'
+                    f'</div>',
                     unsafe_allow_html=True
                 )
         else:
             st.caption("Aucune variable déclarée.")
     else:
         st.markdown(f'<div class="skipped">{ICONS["skip"]} Ignoré — corrigez les erreurs syntaxiques d\'abord.</div>', unsafe_allow_html=True)
+        errors = []
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── FINAL RESULT ──────────────────────────────────────────────────────────
     st.markdown("---")
     if lexer_ok and parser_ok:
-        errors_check, _ = analyze(ast)
-        if not errors_check:
+        if not errors:
             st.markdown(f'<div class="result-ok">{ICONS["party"]} Compilation réussie — aucune erreur détectée.</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — {len(errors_check)} erreur(s) sémantique(s) détectée(s).</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — {len(errors)} erreur(s) sémantique(s) détectée(s).</div>', unsafe_allow_html=True)
     else:
         st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — corrigez les erreurs ci-dessus.</div>', unsafe_allow_html=True)
 

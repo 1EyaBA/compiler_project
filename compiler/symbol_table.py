@@ -1,12 +1,17 @@
 """
 Symbol Table
-Tracks variable names, types, and declaration status.
+Tracks variable names, types, declaration status, and scope depth.
 """
 
 
 class SymbolTable:
     def __init__(self):
-        self.scopes = [{}]   # stack of scopes; index 0 = global
+        # Stack of scopes; each scope: {name: {'type': str, 'level': int}}
+        self.scopes = [{}]
+
+    @property
+    def current_level(self):
+        return len(self.scopes) - 1   # 0 = global
 
     def push_scope(self):
         self.scopes.append({})
@@ -21,22 +26,26 @@ class SymbolTable:
             raise Exception(
                 f"Line {line}: Variable '{name}' is already declared in this scope."
             )
-        current_scope[name] = var_type
+        current_scope[name] = {'type': var_type, 'level': self.current_level}
 
     def lookup(self, name: str, line=None) -> str:
         for scope in reversed(self.scopes):
             if name in scope:
-                return scope[name]
+                return scope[name]['type']
         raise Exception(f"Line {line}: Undeclared variable '{name}'.")
 
     def is_declared(self, name: str) -> bool:
         return any(name in scope for scope in reversed(self.scopes))
 
     def all_variables(self) -> dict:
-        """Return flat view of all variables for display."""
+        """
+        Return flat view of all variables with type and scope level.
+        Returns: {name: {'type': str, 'level': int}}
+        """
         result = {}
         for scope in self.scopes:
-            result.update(scope)
+            for name, info in scope.items():
+                result[name] = info
         return result
 
     def __repr__(self):

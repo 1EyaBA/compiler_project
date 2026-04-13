@@ -80,6 +80,17 @@ class IfNode:
         return f"If({self.condition}, then={self.then_body}, else={self.else_body})"
 
 
+class WhileNode:
+    """Represents a while loop: while <condition> do { <stmt_list> }"""
+    def __init__(self, condition, body, line=None):
+        self.condition = condition
+        self.body = body
+        self.line = line
+
+    def __repr__(self):
+        return f"While({self.condition}, body={self.body})"
+
+
 class ConditionNode:
     def __init__(self, left, op, right, line=None):
         self.left = left
