@@ -439,8 +439,17 @@ if run_all and code.strip():
         unsafe_allow_html=True
     )
     try:
-        tokens = tokenize(source)
-        st.markdown(f'<span class="badge-ok">{ICONS["check"]} {len(tokens)} tokens trouvés</span>', unsafe_allow_html=True)
+        tokens, lex_errors = tokenize(source)
+        if not lex_errors:
+            st.markdown(f'<span class="badge-ok">{ICONS["check"]} {len(tokens)} tokens trouvés</span>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f'<span class="badge-err">{ICONS["x"]} {len(lex_errors)} erreur(s) lexicale(s) &mdash; {len(tokens)} tokens récupérés</span>',
+                unsafe_allow_html=True
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
+            for err in lex_errors:
+                st.markdown(f'<div class="error-item">{ICONS["alert"]} {err}</div>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Token chips
@@ -464,9 +473,9 @@ if run_all and code.strip():
                 a, b, c_ = st.columns([2, 3, 1])
                 a.code(tok.type); b.code(repr(tok.value)); c_.write(str(tok.line))
 
-        lexer_ok = True
-    except SyntaxError as e:
-        st.markdown(f'<span class="badge-err">{ICONS["x"]} Erreur Lexicale</span>', unsafe_allow_html=True)
+        lexer_ok = len(lex_errors) == 0
+    except Exception as e:
+        st.markdown(f'<span class="badge-err">{ICONS["x"]} Erreur Lexicale inattendue</span>', unsafe_allow_html=True)
         st.markdown(f'<div class="error-item">{ICONS["alert"]} {e}</div>', unsafe_allow_html=True)
         lexer_ok = False
         tokens   = []
@@ -478,17 +487,27 @@ if run_all and code.strip():
         unsafe_allow_html=True
     )
     if lexer_ok:
-        try:
-            ast_tree = parse(tokens)
+        ast_tree, parse_errors = parse(tokens)
+        if not parse_errors:
             st.markdown(f'<span class="badge-ok">{ICONS["check"]} AST construit avec succès</span>', unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f'<div class="ast-box">{pretty_print(ast_tree)}</div>', unsafe_allow_html=True)
             parser_ok = True
-        except ParseError as e:
-            st.markdown(f'<span class="badge-err">{ICONS["x"]} Erreur Syntaxique</span>', unsafe_allow_html=True)
-            st.markdown(f'<div class="error-item">{ICONS["alert"]} {e}</div>', unsafe_allow_html=True)
+        else:
+            # Show all parse errors
+            st.markdown(
+                f'<span class="badge-err">{ICONS["x"]} {len(parse_errors)} erreur(s) syntaxique(s)</span>',
+                unsafe_allow_html=True
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
+            for err in parse_errors:
+                st.markdown(f'<div class="error-item">{ICONS["alert"]} {err}</div>', unsafe_allow_html=True)
+            # Still show partial AST if any statements were recovered
+            if ast_tree and ast_tree.statements:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.caption("AST partiel (statements récupérés avant l'erreur) :")
+                st.markdown(f'<div class="ast-box">{pretty_print(ast_tree)}</div>', unsafe_allow_html=True)
             parser_ok = False
-            ast_tree  = None
     else:
         st.markdown(f'<div class="skipped">{ICONS["skip"]} Ignoré — corrigez les erreurs lexicales d\'abord.</div>', unsafe_allow_html=True)
         parser_ok = False
@@ -500,7 +519,7 @@ if run_all and code.strip():
         f'<div class="phase-card"><div class="phase-title phase-semantic">{ICONS["shield"]} Phase 3 — Analyse Sémantique</div>',
         unsafe_allow_html=True
     )
-    if parser_ok and ast_tree:
+    if ast_tree is not None:
         errors, sym_table = analyze(ast_tree)
         if not errors:
             st.markdown(f'<span class="badge-ok">{ICONS["check"]} Aucune erreur sémantique</span>', unsafe_allow_html=True)
@@ -538,13 +557,12 @@ if run_all and code.strip():
 
     # ── FINAL RESULT ──────────────────────────────────────────────────────────
     st.markdown("---")
-    if lexer_ok and parser_ok:
-        if not errors:
-            st.markdown(f'<div class="result-ok">{ICONS["party"]} Compilation réussie — aucune erreur détectée.</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — {len(errors)} erreur(s) sémantique(s) détectée(s).</div>', unsafe_allow_html=True)
+    
+    total_errors = len(lex_errors) + len(parse_errors) + len(errors)
+    if total_errors == 0:
+        st.markdown(f'<div class="result-ok">{ICONS["party"]} Compilation réussie — aucune erreur détectée.</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — corrigez les erreurs ci-dessus.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="result-err">{ICONS["x"]} Compilation échouée — {total_errors} erreur(s) détectée(s) au total.</div>', unsafe_allow_html=True)
 
 elif run_all and not code.strip():
     st.markdown(f'<div class="result-warn">{ICONS["warning"]} Veuillez saisir du code source avant de compiler.</div>', unsafe_allow_html=True)

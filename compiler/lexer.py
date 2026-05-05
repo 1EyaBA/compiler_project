@@ -78,15 +78,21 @@ def spec_format(tokens: list) -> str:
 
 
 # ─── Tokenizer ───────────────────────────────────────────────────────────────
-def tokenize(source_code: str) -> list:
+def tokenize(source_code: str) -> tuple:
     """
     Converts source code string into a list of Token objects.
-    Raises SyntaxError on unrecognized characters.
+    Returns a tuple (tokens, errors) where errors is a list of SyntaxError
+    messages for ALL unrecognized characters found in the source.
+    Never raises — always returns both lists so callers can report every error.
     """
     tokens = []
+    errors = []
     line   = 1
 
-    for mo in re.finditer(MASTER_PATTERN, source_code):
+    # Build a combined pattern that also catches any single unrecognized character
+    catch_all_pattern = MASTER_PATTERN + r'|(?P<UNKNOWN>.+?)'
+
+    for mo in re.finditer(catch_all_pattern, source_code):
         kind  = mo.lastgroup
         value = mo.group()
 
@@ -95,26 +101,16 @@ def tokenize(source_code: str) -> list:
             continue
         elif kind == 'WHITESPACE':
             continue
+        elif kind == 'UNKNOWN':
+            # Collect every bad character but keep scanning
+            for ch in value:
+                if ch == '\n':
+                    line += 1
+                else:
+                    errors.append(
+                        f"Caractère inattendu '{ch}' à la ligne {line}"
+                    )
         else:
             tokens.append(Token(kind, value, line))
 
-    # Detect characters that matched nothing
-    matched_end = 0
-    cur_line    = 1
-    for mo in re.finditer(MASTER_PATTERN, source_code):
-        if mo.start() > matched_end:
-            bad_char = source_code[matched_end]
-            raise SyntaxError(
-                f"Unexpected character '{bad_char}' at line {cur_line}, position {matched_end}"
-            )
-        cur_line    += source_code[matched_end:mo.start()].count('\n')
-        matched_end  = mo.end()
-
-    # Check trailing unmatched chars
-    if matched_end < len(source_code):
-        bad_char = source_code[matched_end]
-        raise SyntaxError(
-            f"Unexpected character '{bad_char}' at line {cur_line}, position {matched_end}"
-        )
-
-    return tokens
+    return tokens, errors
